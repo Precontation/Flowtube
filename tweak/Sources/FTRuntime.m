@@ -1,5 +1,34 @@
 #import "FTRuntime.h"
 
+static NSMutableArray<NSString *> *FTLogLines(void) {
+    static NSMutableArray *lines;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ lines = [NSMutableArray array]; });
+    return lines;
+}
+
+void FTLogMessage(NSString *message) {
+    NSLog(@"[FlowTube] %@", message);
+    static NSDateFormatter *formatter;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        formatter = [NSDateFormatter new];
+        formatter.dateFormat = @"HH:mm:ss";
+    });
+    NSMutableArray *lines = FTLogLines();
+    @synchronized (lines) {
+        [lines addObject:[NSString stringWithFormat:@"%@ %@", [formatter stringFromDate:NSDate.date], message]];
+        if (lines.count > 400) [lines removeObjectsInRange:NSMakeRange(0, lines.count - 400)];
+    }
+}
+
+NSString *FTLogText(void) {
+    NSMutableArray *lines = FTLogLines();
+    @synchronized (lines) {
+        return [lines componentsJoinedByString:@"\n"];
+    }
+}
+
 BOOL FTHook(NSString *className, NSString *selectorName, IMP replacement, IMP *original) {
     Class cls = NSClassFromString(className);
     if (cls == Nil || replacement == NULL) {

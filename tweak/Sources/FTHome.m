@@ -13,6 +13,7 @@
 
 void FTInstallPlayerHooks(void);
 void FTInstallCommandHooks(void);
+void FTInstallButtonStateHooks(void);
 
 static IMP FTOriginalBrowseDidAppear;
 static IMP FTOriginalBrowseLayout;
@@ -46,9 +47,12 @@ static BOOL FTFoundHome;
         [_feed didMoveToParentViewController:browse];
 
         UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
-        config.title = @"✦ Flow";
+        config.title = @"Flow";
+        config.image = [UIImage systemImageNamed:@"rectangle.stack"];
+        config.imagePadding = 6;
+        config.baseForegroundColor = UIColor.systemBackgroundColor;
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        config.baseBackgroundColor = [UIColor colorWithRed:0.42 green:0.36 blue:0.98 alpha:1];
+        config.baseBackgroundColor = UIColor.labelColor;
         _flowPill = [UIButton buttonWithConfiguration:config primaryAction:nil];
         _flowPill.accessibilityLabel = @"Show Flow feed";
         [_flowPill addTarget:self action:@selector(showFlow) forControlEvents:UIControlEventTouchUpInside];
@@ -210,9 +214,10 @@ static void FTBrowseLayout(UIViewController *self, SEL _cmd) {
     UIWindow *window = FTKeyWindow();
     if (window == nil || FTFoundHome) return;
     UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
-    config.title = @"✦";
+    config.image = [UIImage systemImageNamed:@"rectangle.stack"];
+    config.baseForegroundColor = UIColor.systemBackgroundColor;
     config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    config.baseBackgroundColor = [UIColor colorWithRed:0.42 green:0.36 blue:0.98 alpha:0.9];
+    config.baseBackgroundColor = UIColor.labelColor;
     UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
     button.accessibilityLabel = @"Open Flow feed";
     button.frame = CGRectMake(CGRectGetWidth(window.bounds) - 60, CGRectGetHeight(window.bounds) * 0.62, 44, 44);
@@ -260,6 +265,7 @@ __attribute__((constructor)) static void FTInit(void) {
         FTLog(@"loading");
         FTInstallPlayerHooks();
         FTInstallCommandHooks();
+        FTInstallButtonStateHooks();
         FTHook(@"YTBrowseViewController", @"viewDidAppear:", (IMP)FTBrowseDidAppear, &FTOriginalBrowseDidAppear);
         FTHook(@"YTBrowseViewController", @"viewDidLayoutSubviews", (IMP)FTBrowseLayout, &FTOriginalBrowseLayout);
         [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidFinishLaunchingNotification object:nil

@@ -13,10 +13,6 @@ UIColor *FTBackgroundColor(void) {
     }];
 }
 
-static UIColor *FTAccent(void) {
-    return [UIColor colorWithRed:0.42 green:0.36 blue:0.98 alpha:1];
-}
-
 #pragma mark - Images
 
 @implementation FTImages
@@ -110,8 +106,8 @@ static UIColor *FTAccent(void) {
         _meta.numberOfLines = 1;
 
         _reason = [UILabel new];
-        _reason.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
-        _reason.textColor = FTAccent();
+        _reason.font = [UIFont systemFontOfSize:12];
+        _reason.textColor = UIColor.tertiaryLabelColor;
         _reason.numberOfLines = 1;
 
         for (UIView *view in @[_thumbnail, _avatar, _title, _meta, _reason]) {
@@ -163,72 +159,49 @@ static UIColor *FTAccent(void) {
     self.duration.backgroundColor = video.isLive ? UIColor.systemRedColor : [UIColor colorWithWhite:0 alpha:0.78];
     self.title.text = video.title;
     self.meta.text = video.metaText;
-    self.reason.text = video.reason.length ? [@"✦ " stringByAppendingString:video.reason] : nil;
+    self.reason.text = video.reason.length ? video.reason : nil;
     self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", video.title, video.metaText];
     self.isAccessibilityElement = YES;
 }
 
 @end
 
-/// The first row: Flow's title, the switch back to YouTube's feed and settings.
+/// The first row: the For you / Subscriptions switch and a menu (YouTube's feed, settings).
 @interface FTHeaderCell : UICollectionViewCell
-@property (nonatomic) UILabel *title;
 @property (nonatomic) UISegmentedControl *kinds;
-@property (nonatomic) UILabel *subtitle;
-@property (nonatomic) UIButton *youtube;
-@property (nonatomic) UIButton *settings;
+@property (nonatomic) UIButton *more;
+@property (nonatomic) UIView *spacer;
 @end
 
 @implementation FTHeaderCell
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
-        UILabel *title = [UILabel new];
-        _title = title;
-        NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:@"✦ "
-            attributes:@{ NSForegroundColorAttributeName: FTAccent(), NSFontAttributeName: [UIFont systemFontOfSize:20 weight:UIFontWeightBold] }];
-        [text appendAttributedString:[[NSAttributedString alloc] initWithString:@"Flow"
-            attributes:@{ NSForegroundColorAttributeName: UIColor.labelColor, NSFontAttributeName: [UIFont systemFontOfSize:20 weight:UIFontWeightBold] }]];
-        title.attributedText = text;
-        _subtitle = [UILabel new];
-        _subtitle.font = [UIFont systemFontOfSize:12];
-        _subtitle.textColor = UIColor.secondaryLabelColor;
-        _subtitle.text = @"Your on-device algorithm";
-
-        UIButtonConfiguration *pill = [UIButtonConfiguration grayButtonConfiguration];
-        pill.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        pill.title = @"YouTube feed";
-        pill.buttonSize = UIButtonConfigurationSizeSmall;
-        _youtube = [UIButton buttonWithConfiguration:pill primaryAction:nil];
-        _youtube.accessibilityHint = @"Shows YouTube's own Home feed";
-
-        UIButtonConfiguration *gear = [UIButtonConfiguration plainButtonConfiguration];
-        gear.image = [UIImage systemImageNamed:@"slider.horizontal.3"];
-        gear.baseForegroundColor = UIColor.labelColor;
-        _settings = [UIButton buttonWithConfiguration:gear primaryAction:nil];
-        _settings.accessibilityLabel = @"Flow settings";
-
-        UIStackView *texts = [[UIStackView alloc] initWithArrangedSubviews:@[title, _subtitle]];
-        texts.axis = UILayoutConstraintAxisVertical;
-        texts.spacing = 1;
-        UIStackView *row = [[UIStackView alloc] initWithArrangedSubviews:@[texts, [UIView new], _youtube, _settings]];
-        row.alignment = UIStackViewAlignmentCenter;
-        row.spacing = 6;
-
         _kinds = [[UISegmentedControl alloc] initWithItems:@[@"For you", @"Subscriptions"]];
         _kinds.selectedSegmentIndex = 0;
 
-        UIStackView *column = [[UIStackView alloc] initWithArrangedSubviews:@[row, _kinds]];
-        column.axis = UILayoutConstraintAxisVertical;
-        column.spacing = 10;
-        column.translatesAutoresizingMaskIntoConstraints = NO;
-        [self.contentView addSubview:column];
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+        config.image = [UIImage systemImageNamed:@"ellipsis.circle"];
+        config.baseForegroundColor = UIColor.labelColor;
+        _more = [UIButton buttonWithConfiguration:config primaryAction:nil];
+        _more.showsMenuAsPrimaryAction = YES;
+        _more.accessibilityLabel = @"More";
+        [_more setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+
+        _spacer = [UIView new];
+        _spacer.hidden = YES;
+        [_spacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+        UIStackView *row = [[UIStackView alloc] initWithArrangedSubviews:@[_kinds, _spacer, _more]];
+        row.alignment = UIStackViewAlignmentCenter;
+        row.spacing = 8;
+        row.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.contentView addSubview:row];
         [NSLayoutConstraint activateConstraints:@[
-            [column.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:14],
-            [column.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-6],
-            [_kinds.trailingAnchor constraintEqualToAnchor:column.trailingAnchor constant:-8],
-            [column.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:8],
-            [column.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-10],
+            [row.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12],
+            [row.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-4],
+            [row.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6],
+            [row.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-10],
+            [_kinds.heightAnchor constraintGreaterThanOrEqualToConstant:32],
         ]];
     }
     return self;
@@ -260,7 +233,8 @@ static UIColor *FTAccent(void) {
         _body.textColor = UIColor.secondaryLabelColor;
         _body.numberOfLines = 0;
         UIButtonConfiguration *filled = [UIButtonConfiguration filledButtonConfiguration];
-        filled.baseBackgroundColor = FTAccent();
+        filled.baseBackgroundColor = UIColor.labelColor;
+        filled.baseForegroundColor = UIColor.systemBackgroundColor;
         filled.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         _primary = [UIButton buttonWithConfiguration:filled primaryAction:nil];
         UIButtonConfiguration *plain = [UIButtonConfiguration grayButtonConfiguration];
@@ -445,7 +419,7 @@ typedef NS_ENUM(NSInteger, FTNotice) {
     if (self.loading) return;
     self.loading = YES;
     self.exhausted = NO;
-    if (self.videos.count == 0) [self.collectionView reloadData];
+    if (self.videos.count == 0) [self reloadContent];
     __weak typeof(self) weakSelf = self;
     FTFeedKind kind = self.kind;
     void (^done)(FTPage *) = ^(FTPage *page) {
@@ -467,7 +441,7 @@ typedef NS_ENUM(NSInteger, FTNotice) {
                 : kind == FTFeedKindSubscriptions ? FTNoticeNoSubscriptions : FTNoticeEmpty;
         }
         if (kind == FTFeedKindSubscriptions && me.notice == FTNoticeWelcome) me.notice = FTNoticeNone;
-        [me.collectionView reloadData];
+        [me reloadContent];
     };
     if (kind == FTFeedKindSubscriptions) [FTEngine.shared loadSubscriptions:done];
     else [FTEngine.shared loadHomeMore:NO completion:done];
@@ -481,7 +455,7 @@ typedef NS_ENUM(NSInteger, FTNotice) {
     self.loadingMore = NO;
     self.videos = [NSMutableArray array];
     self.notice = FTNoticeNone;
-    [self.collectionView reloadData];
+    [self reloadContent];
     [self refresh];
 }
 
@@ -492,6 +466,39 @@ typedef NS_ENUM(NSInteger, FTNotice) {
 
 - (void)kindChanged:(UISegmentedControl *)control {
     self.kind = (FTFeedKind)control.selectedSegmentIndex;
+}
+
+- (UIMenu *)headerMenu {
+    __weak typeof(self) weakSelf = self;
+    NSMutableArray *items = [NSMutableArray array];
+    if (self.standalone) {
+        [items addObject:[UIAction actionWithTitle:@"Close" image:[UIImage systemImageNamed:@"xmark"] identifier:nil handler:^(UIAction *a) {
+            [weakSelf close];
+        }]];
+    } else if (!self.subscriptionsTab) {
+        [items addObject:[UIAction actionWithTitle:@"Show YouTube's feed" image:[UIImage systemImageNamed:@"play.rectangle"] identifier:nil handler:^(UIAction *a) {
+            [weakSelf showYouTube];
+        }]];
+    }
+    [items addObject:[UIAction actionWithTitle:@"Refresh" image:[UIImage systemImageNamed:@"arrow.clockwise"] identifier:nil handler:^(UIAction *a) {
+        [weakSelf refresh];
+    }]];
+    [items addObject:[UIAction actionWithTitle:@"Flow settings" image:[UIImage systemImageNamed:@"gearshape"] identifier:nil handler:^(UIAction *a) {
+        [weakSelf openSettings];
+    }]];
+    return [UIMenu menuWithChildren:items];
+}
+
+/// Reloads everything but the header row, so its segmented control keeps its own animation.
+- (void)reloadContent {
+    NSIndexSet *content = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(FTSectionNotice, FTSectionCount - FTSectionNotice)];
+    if ([self.collectionView numberOfSections] != FTSectionCount) {
+        [self.collectionView reloadData];
+        return;
+    }
+    [UIView performWithoutAnimation:^{
+        [self.collectionView reloadSections:content];
+    }];
 }
 
 - (void)loadMore {
@@ -546,25 +553,13 @@ typedef NS_ENUM(NSInteger, FTNotice) {
     switch (indexPath.section) {
         case FTSectionHeader: {
             FTHeaderCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"header" forIndexPath:indexPath];
-            [cell.youtube removeTarget:nil action:NULL forControlEvents:UIControlEventAllEvents];
-            [cell.settings removeTarget:nil action:NULL forControlEvents:UIControlEventAllEvents];
-            [cell.youtube addTarget:self action:self.standalone ? @selector(close) : @selector(showYouTube) forControlEvents:UIControlEventTouchUpInside];
-            [cell.settings addTarget:self action:@selector(openSettings) forControlEvents:UIControlEventTouchUpInside];
-            UIButtonConfiguration *config = cell.youtube.configuration;
-            config.title = self.standalone ? @"Close" : @"YouTube feed";
-            cell.youtube.configuration = config;
-            cell.youtube.hidden = self.subscriptionsTab;
+            // On YouTube's Subscriptions tab there is nothing to switch between.
             cell.kinds.hidden = self.subscriptionsTab;
-            cell.kinds.selectedSegmentIndex = self.kind;
+            cell.spacer.hidden = !self.subscriptionsTab;
+            if (cell.kinds.selectedSegmentIndex != self.kind) cell.kinds.selectedSegmentIndex = self.kind;
             [cell.kinds removeTarget:nil action:NULL forControlEvents:UIControlEventAllEvents];
             [cell.kinds addTarget:self action:@selector(kindChanged:) forControlEvents:UIControlEventValueChanged];
-            cell.subtitle.text = self.kind == FTFeedKindSubscriptions
-                ? (FTLocalModeEnabled() ? @"Kept on this device" : @"Newest from channels you follow")
-                : @"Your on-device algorithm";
-            if (self.subscriptionsTab) {
-                cell.title.attributedText = [[NSAttributedString alloc] initWithString:@"Subscriptions"
-                    attributes:@{ NSForegroundColorAttributeName: UIColor.labelColor, NSFontAttributeName: [UIFont systemFontOfSize:20 weight:UIFontWeightBold] }];
-            }
+            cell.more.menu = [self headerMenu];
             return cell;
         }
         case FTSectionNotice:

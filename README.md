@@ -21,8 +21,8 @@ exactly as before.
   - "a channel like X" neighbours from co-watch
 
   Everything is ranked by FlowNeuro, with Flow's own "why you see this" line on each card.
-- **YouTube feed button.** Tap **YouTube feed** in Flow's header to get YouTube's own Home back,
-  and the **✦ Flow** pill to return.
+- **YouTube's feed is one tap away.** Flow's **⋯** menu → *Show YouTube's feed* brings YouTube's
+  own Home back, and the **Flow** pill returns.
 - **It learns as you go.** It learns from what you watch (watch time, skips under 20%,
   rewatches), likes and dislikes (from YouTube's buttons), and long-press → *Not interested* /
   *Don't recommend channel* on Flow cards.
@@ -88,7 +88,7 @@ Tweak design notes:
 - **Return YouTube Dislike.** It's built from PoomSmart's source with Logos's `internal`
   generator, so its hooks are plain runtime swaps too, and the IPA still needs no Substrate or
   ElleKit. Its `RYD.bundle` goes into the app.
-- **Fallback.** If a future YouTube moves Home, a draggable ✦ button opens Flow full screen
+- **Fallback.** If a future YouTube moves Home, a draggable Flow button opens it full screen
   instead.
 
 ## Getting an IPA (AltStore)
@@ -120,9 +120,11 @@ Then run `scripts/inject-ipa.sh base.ipa out.ipa dist/FlowTube.dylib`. Add
 
 - **Copying from your account.** This takes the channels on the first page YouTube loads for
   Subscriptions → All. For very long lists, Takeout's `subscriptions.csv` gets every channel.
-- **Local mode and YouTube's buttons.** In local mode YouTube's buttons don't change look, because
-  YouTube never got the action. A toast confirms what Flow did, and tapping Subscribe on a channel
-  Flow already follows offers to unsubscribe.
+- **Local mode and YouTube's buttons.** In local mode, FlowTube sets the watch page's subscribe and
+  like state from Flow's own data before YouTube draws it, and switches a tapped Subscribe label
+  right away. A like/dislike tap shows a toast, and the icon itself catches up the next time the
+  video opens. These are undocumented parts of YouTube, so if a button doesn't follow, *Copy debug
+  log* in Flow's settings shows what was found.
 - **Signed-out prompts.** Telling which button opened a signed-out "Sign in" prompt goes by the
   button's accessibility label and the prompt's text. If one isn't caught, the normal sign-in
   prompt shows, and the device log says `[FlowTube] sign-in prompt` with what was seen.

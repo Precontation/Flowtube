@@ -23,6 +23,9 @@
 NSString *FTCurrentVideoID(void);
 NSString *FTCurrentChannelID(void);
 NSString *FTCurrentChannelName(void);
+void FTSetRating(NSString *videoID, NSString *rating);
+NSString *FTRatingFor(NSString *videoID);
+void FTShowSubscribed(UIView *button, BOOL subscribed);
 
 typedef NS_ENUM(NSInteger, FTActionKind) {
     FTActionSubscribe,
@@ -177,9 +180,10 @@ static NSString *FTNameFor(NSString *channelID) {
     return [channelID isEqualToString:FTCurrentChannelID()] ? FTCurrentChannelName() : nil;
 }
 
-static void FTSubscribeLocally(NSString *channelID, BOOL subscribed, BOOL announce) {
+static void FTSubscribeLocally(NSString *channelID, BOOL subscribed, BOOL announce, UIView *button) {
     if (channelID.length == 0) return;
     [FTEngine.shared setSubscribed:subscribed channelID:channelID name:FTNameFor(channelID)];
+    if (button) FTShowSubscribed(button, subscribed);
     if (!announce) return;
     NSString *name = FTNameFor(channelID);
     FTToast(subscribed
@@ -189,9 +193,9 @@ static void FTSubscribeLocally(NSString *channelID, BOOL subscribed, BOOL announ
 
 /// Signed out, the subscribe button can't say whether it would subscribe or unsubscribe, so a
 /// second tap on a channel Flow already follows asks.
-static void FTToggleSubscription(NSString *channelID) {
+static void FTToggleSubscription(NSString *channelID, UIView *button) {
     if (![FTEngine.shared.subscribedIDs containsObject:channelID]) {
-        FTSubscribeLocally(channelID, YES, YES);
+        FTSubscribeLocally(channelID, YES, YES, button);
         return;
     }
     NSString *name = FTNameFor(channelID) ?: @"this channel";
@@ -200,7 +204,7 @@ static void FTToggleSubscription(NSString *channelID) {
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:@"Unsubscribe" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *a) {
-        FTSubscribeLocally(channelID, NO, YES);
+        FTSubscribeLocally(channelID, NO, YES, button);
     }]];
     [FTTopViewController() presentViewController:alert animated:YES completion:nil];
 }
@@ -208,6 +212,7 @@ static void FTToggleSubscription(NSString *channelID) {
 static void FTRate(NSString *action, NSString *videoID) {
     if (videoID.length == 0) return;
     [FTEngine.shared feedback:action videoID:videoID video:nil];
+    FTSetRating(videoID, action);
     NSDictionary *said = @{ @"like": @"Liked in Flow", @"dislike": @"Disliked in Flow", @"unlike": @"Rating removed in Flow" };
     FTToast(said[action] ?: @"Saved in Flow");
 }
@@ -250,8 +255,8 @@ static FTDecision FTDecide(id command, UIView *view) {
                     // YouTube never hears about it, so its button keeps saying "Subscribe": a tap on
                     // a channel Flow already follows offers to unsubscribe.
                     for (NSString *channel in action.channelIDs) {
-                        if (subscribe) dispatch_async(dispatch_get_main_queue(), ^{ FTToggleSubscription(channel); });
-                        else FTSubscribeLocally(channel, NO, YES);
+                        if (subscribe) dispatch_async(dispatch_get_main_queue(), ^{ FTToggleSubscription(channel, view); });
+                        else FTSubscribeLocally(channel, NO, YES, view);
                     }
                     decision.handled = YES;
                 } else {
@@ -277,11 +282,13 @@ static FTDecision FTDecide(id command, UIView *view) {
                 if ([intent isEqualToString:@"subscribe"]) {
                     NSString *channel = FTGuessChannel(text, view);
                     if (channel.length) {
-                        dispatch_async(dispatch_get_main_queue(), ^{ FTToggleSubscription(channel); });
+                        dispatch_async(dispatch_get_main_queue(), ^{ FTToggleSubscription(channel, view); });
                         decision.handled = YES;
                     }
                 } else if (intent != nil && FTCurrentVideoID().length) {
-                    FTRate(intent, FTCurrentVideoID());
+                    // The button shows Flow's rating, so tapping a lit one takes it back.
+                    NSString *video = FTCurrentVideoID();
+                    FTRate([FTRatingFor(video) isEqualToString:intent] ? @"unlike" : intent, video);
                     decision.handled = YES;
                 }
                 break;
@@ -304,7 +311,7 @@ static void FTMirror(void) {
     FTPendingMirror = nil;
     for (FTAction *action in actions) {
         for (NSString *channel in action.channelIDs) {
-            FTSubscribeLocally(channel, action.kind == FTActionSubscribe, NO);
+            FTSubscribeLocally(channel, action.kind == FTActionSubscribe, NO, nil);
         }
     }
 }

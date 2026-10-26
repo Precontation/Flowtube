@@ -10,7 +10,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-#define FTLog(fmt, ...) NSLog(@"[FlowTube] " fmt, ##__VA_ARGS__)
+/// Logs to the device log and to an in-app buffer (Settings → Copy debug log).
+void FTLogMessage(NSString *message);
+#define FTLog(fmt, ...) FTLogMessage([NSString stringWithFormat:fmt, ##__VA_ARGS__])
+/// The last few hundred FlowTube log lines, oldest first.
+NSString *FTLogText(void);
 
 /// Replaces `selector` on `className` with `replacement`, storing the previous implementation in
 /// `*original`. Returns NO, and changes nothing, when the class or method is missing.

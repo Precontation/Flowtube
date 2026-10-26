@@ -7,6 +7,8 @@
 #import "FTRuntime.h"
 #import "FTEngine.h"
 
+void FTSetRating(NSString *videoID, NSString *rating);
+
 static NSHashTable *FTPlayers;
 static IMP FTOriginalPlayerViewDidLoad;
 static IMP FTOriginalNotifyLike;
@@ -118,6 +120,7 @@ static void FTNoteLike(int status, NSString *videoID) {
     // YTLikeStatus: 0 like, 1 dislike, 2 neutral.
     NSString *action = status == 0 ? @"like" : status == 1 ? @"dislike" : @"unlike";
     [FTEngine.shared feedback:action videoID:videoID video:nil];
+    FTSetRating(videoID, action);
 }
 
 static void FTNotifyLike(id self, SEL _cmd, int status, NSString *videoID) {

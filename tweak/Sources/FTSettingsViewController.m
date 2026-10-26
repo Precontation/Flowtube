@@ -1,4 +1,5 @@
 #import "FTSettingsViewController.h"
+#import "FTRuntime.h"
 #import "FTEngine.h"
 #import "FTFeedViewController.h"
 #import "FTNavigation.h"
@@ -33,7 +34,7 @@ typedef NS_ENUM(NSInteger, FTRow) {
     FTRowLocal, FTRowLibrary, FTRowCopyAccount,
     FTRowStats, FTRowTopics,
     FTRowInterests, FTRowSubsCSV, FTRowSubsJSON, FTRowHistory,
-    FTRowReset,
+    FTRowLog, FTRowReset,
 };
 
 @interface FTSettingsViewController () <UIDocumentPickerDelegate>
@@ -71,7 +72,7 @@ typedef NS_ENUM(NSInteger, FTRow) {
         @[@(FTRowLocal), @(FTRowLibrary), @(FTRowCopyAccount)],
         @[@(FTRowStats), @(FTRowTopics)],
         @[@(FTRowInterests), @(FTRowSubsCSV), @(FTRowSubsJSON), @(FTRowHistory)],
-        @[@(FTRowReset)],
+        @[@(FTRowLog), @(FTRowReset)],
     ];
 }
 
@@ -175,6 +176,10 @@ typedef NS_ENUM(NSInteger, FTRow) {
             content.text = @"Watch history (Takeout .json)";
             content.image = [UIImage systemImageNamed:@"clock.arrow.circlepath"];
             break;
+        case FTRowLog:
+            content.text = @"Copy debug log";
+            content.image = [UIImage systemImageNamed:@"doc.on.doc"];
+            break;
         case FTRowReset:
             content.text = @"Forget everything";
             content.textProperties.color = UIColor.systemRedColor;
@@ -206,6 +211,12 @@ typedef NS_ENUM(NSInteger, FTRow) {
         case FTRowSubsJSON: [self pick:@"subscriptions-json" types:@[UTTypeJSON, UTTypePlainText]]; break;
         case FTRowHistory: [self pick:@"history-json" types:@[UTTypeJSON, UTTypePlainText]]; break;
         case FTRowReset: [self confirmReset]; break;
+        case FTRowLog: {
+            NSString *log = FTLogText();
+            UIPasteboard.generalPasteboard.string = log.length ? log : @"(FlowTube log is empty)";
+            FTToast(@"FlowTube's log is copied");
+            break;
+        }
         default: break;
     }
 }
