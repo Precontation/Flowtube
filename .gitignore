@@ -1,0 +1,7 @@
+core/target/
+dist/
+tweak/.theos/
+tweak/packages/
+tweak/dist/
+*.ipa
+.DS_Store

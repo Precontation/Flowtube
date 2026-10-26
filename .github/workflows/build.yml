@@ -1,0 +1,128 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ipa_url:
+        description: "IPA to add FlowTube to. Leave empty for the latest YTKACE release."
+        required: false
+        default: ""
+        type: string
+      ios16:
+        description: "With an empty URL: use YTKACE's iOS 16 build instead of the iOS 17+ one"
+        required: false
+        default: false
+        type: boolean
+      return_dislike:
+        description: "Also add Return YouTube Dislike (skipped if the IPA already has it)"
+        required: false
+        default: true
+        type: boolean
+      release:
+        description: "Also publish the IPA as a GitHub release"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+      - name: Engine tests
+        working-directory: core
+        run: cargo test --release
+
+  dylib:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+      - name: Rust iOS target
+        run: rustup target add aarch64-apple-ios
+      - name: Build FlowTube.dylib
+        run: bash scripts/build-dylib.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlowTube-dylib
+          path: dist/FlowTube.dylib
+          if-no-files-found: error
+
+  ipa:
+    if: github.event_name == 'workflow_dispatch'
+    needs: dylib
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: FlowTube-dylib
+          path: dist
+      - name: Tools
+        run: brew install ldid
+      - name: Base IPA
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IPA_URL: ${{ inputs.ipa_url }}
+          IOS16: ${{ inputs.ios16 }}
+        run: |
+          if [ -z "$IPA_URL" ]; then
+            assets="$(gh api repos/itzzace/ytkace/releases/latest --jq '.assets[] | [.name, .browser_download_url] | @tsv')"
+            if [ "$IOS16" = "true" ]; then
+              line="$(echo "$assets" | grep -i '\.ipa' | grep -i 'ios16' | head -1)"
+            else
+              line="$(echo "$assets" | grep -i '\.ipa' | grep -vi 'ios16' | head -1)"
+            fi
+            [ -n "$line" ] || { echo "No YTKACE IPA found in its latest release"; exit 1; }
+            IPA_URL="$(echo "$line" | cut -f2)"
+            name="$(echo "$line" | cut -f1)"
+          else
+            name="$(basename "${IPA_URL%%\?*}")"
+          fi
+          echo "Base: $IPA_URL"
+          curl --fail --location "$IPA_URL" --output base.ipa
+          case "$(file --mime-type -b base.ipa)" in
+            application/zip|application/x-ios-app) ;;
+            *) echo "That URL didn't return an IPA"; exit 1 ;;
+          esac
+          stem="${name%.ipa}"
+          echo "output=FlowTube_${stem:-YouTube}.ipa" >> "$GITHUB_OUTPUT"
+      - name: Build Return YouTube Dislike
+        if: inputs.return_dislike
+        run: bash scripts/build-ryd.sh
+      - name: Inject
+        env:
+          RYD: ${{ inputs.return_dislike }}
+        run: |
+          extra=()
+          if [ "$RYD" = "true" ]; then
+            extra=(dist/YouTubeDislikesReturn.dylib --resource dist/RYD.bundle)
+          fi
+          bash scripts/inject-ipa.sh base.ipa "${{ steps.base.outputs.output }}" dist/FlowTube.dylib "${extra[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlowTube-IPA
+          path: ${{ steps.base.outputs.output }}
+          if-no-files-found: error
+      - name: Release
+        if: inputs.release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(awk '/^Version:/ {print $2}' tweak/control)"
+          tag="v${version}-$(date +%Y%m%d%H%M)"
+          gh release create "$tag" "${{ steps.base.outputs.output }}" dist/FlowTube.dylib \
+            --title "FlowTube $version" \
+            --notes "FlowTube $version injected into ${{ steps.base.outputs.output }}. Install the IPA with AltStore (My Apps → +)."

@@ -1,0 +1,9 @@
+Package: io.github.flowtube.ios
+Name: FlowTube
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: Flow's on-device recommendation algorithm (FlowNeuro) as your YouTube Home feed. Works alongside YTKACE, YTPlusM and YTLitePlus.
+Maintainer: FlowTube
+Author: FlowTube
+Section: Tweaks
+Depends: mobilesubstrate | ellekit, firmware (>= 15.0)
