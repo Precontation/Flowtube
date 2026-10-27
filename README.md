@@ -98,6 +98,8 @@ Tweak design notes:
    [YTKACE release](https://github.com/itzzace/ytkace/releases) (YouTube 21.42, iOS 17+), or
    tick *iOS 16* for its other build. To use YTPlusM or YTLitePlus instead, paste a direct link
    to that IPA.
+   Untick *FlowTube* for an IPA with just Return YouTube Dislike added (artifact
+   **YouTube-IPA**).
 3. Download the **FlowTube-IPA** artifact, unzip it, and in AltStore go to **My Apps → +** and
    pick the IPA. Tick *release* if you'd rather have it as a GitHub release.
 

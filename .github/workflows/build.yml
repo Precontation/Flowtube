@@ -15,6 +15,11 @@ on:
         required: false
         default: false
         type: boolean
+      flowtube:
+        description: "Include FlowTube (untick for just the base IPA plus Return YouTube Dislike)"
+        required: false
+        default: true
+        type: boolean
       return_dislike:
         description: "Also add Return YouTube Dislike (skipped if the IPA already has it)"
         required: false
@@ -77,7 +82,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           IPA_URL: ${{ inputs.ipa_url }}
           IOS16: ${{ inputs.ios16 }}
+          FLOWTUBE: ${{ inputs.flowtube }}
+          RYD: ${{ inputs.return_dislike }}
         run: |
+          if [ "$FLOWTUBE" != "true" ] && [ "$RYD" != "true" ]; then
+            echo "::error::Nothing to add: tick FlowTube, Return YouTube Dislike, or both."
+            exit 1
+          fi
           if [ -z "$IPA_URL" ]; then
             assets="$(gh api repos/itzzace/ytkace/releases/latest --jq '.assets[] | [.name, .browser_download_url] | @tsv')"
             if [ "$IOS16" = "true" ]; then
@@ -98,31 +109,44 @@ jobs:
             *) echo "That URL didn't return an IPA"; exit 1 ;;
           esac
           stem="${name%.ipa}"
-          echo "output=FlowTube_${stem:-YouTube}.ipa" >> "$GITHUB_OUTPUT"
+          if [ "$FLOWTUBE" = "true" ]; then prefix="FlowTube_"; else prefix="RYD_"; fi
+          echo "output=${prefix}${stem:-YouTube}.ipa" >> "$GITHUB_OUTPUT"
       - name: Build Return YouTube Dislike
         if: inputs.return_dislike
         run: bash scripts/build-ryd.sh
       - name: Inject
         env:
+          FLOWTUBE: ${{ inputs.flowtube }}
           RYD: ${{ inputs.return_dislike }}
         run: |
-          extra=()
-          if [ "$RYD" = "true" ]; then
-            extra=(dist/YouTubeDislikesReturn.dylib --resource dist/RYD.bundle)
+          add=()
+          if [ "$FLOWTUBE" = "true" ]; then
+            add+=(dist/FlowTube.dylib)
           fi
-          bash scripts/inject-ipa.sh base.ipa "${{ steps.base.outputs.output }}" dist/FlowTube.dylib "${extra[@]}"
+          if [ "$RYD" = "true" ]; then
+            add+=(dist/YouTubeDislikesReturn.dylib --resource dist/RYD.bundle)
+          fi
+          bash scripts/inject-ipa.sh base.ipa "${{ steps.base.outputs.output }}" "${add[@]}"
       - uses: actions/upload-artifact@v4
         with:
-          name: FlowTube-IPA
+          name: ${{ inputs.flowtube && 'FlowTube-IPA' || 'YouTube-IPA' }}
           path: ${{ steps.base.outputs.output }}
           if-no-files-found: error
       - name: Release
         if: inputs.release
         env:
           GH_TOKEN: ${{ github.token }}
+          FLOWTUBE: ${{ inputs.flowtube }}
         run: |
-          version="$(awk '/^Version:/ {print $2}' tweak/control)"
-          tag="v${version}-$(date +%Y%m%d%H%M)"
-          gh release create "$tag" "${{ steps.base.outputs.output }}" dist/FlowTube.dylib \
-            --title "FlowTube $version" \
-            --notes "FlowTube $version injected into ${{ steps.base.outputs.output }}. Install the IPA with AltStore (My Apps → +)."
+          ipa="${{ steps.base.outputs.output }}"
+          stamp="$(date +%Y%m%d%H%M)"
+          if [ "$FLOWTUBE" = "true" ]; then
+            version="$(awk '/^Version:/ {print $2}' tweak/control)"
+            gh release create "v${version}-${stamp}" "$ipa" dist/FlowTube.dylib \
+              --title "FlowTube $version" \
+              --notes "FlowTube $version injected into $ipa. Install the IPA with AltStore (My Apps → +)."
+          else
+            gh release create "base-${stamp}" "$ipa" \
+              --title "$ipa" \
+              --notes "The base IPA with Return YouTube Dislike, without FlowTube. Install with AltStore (My Apps → +)."
+          fi

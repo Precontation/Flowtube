@@ -4,14 +4,14 @@
 # load command in the main binary; resource bundles go into the app. Everything is re-signed ad
 # hoc and re-zipped; sideloaders (AltStore, SideStore, Feather, TrollStore) sign it again.
 #
-#   scripts/inject-ipa.sh input.ipa output.ipa FlowTube.dylib [Other.dylib ...] [--resource RYD.bundle ...]
+#   scripts/inject-ipa.sh input.ipa output.ipa Some.dylib [Other.dylib ...] [--resource RYD.bundle ...]
 #
 # A dylib the IPA already loads (by name, or Return YouTube Dislike under any name) is skipped,
 # so nothing is ever loaded twice.
 set -euo pipefail
 
 if [[ $# -lt 3 ]]; then
-  echo "usage: inject-ipa.sh input.ipa output.ipa FlowTube.dylib [Other.dylib ...] [--resource Bundle ...]" >&2
+  echo "usage: inject-ipa.sh input.ipa output.ipa Some.dylib [Other.dylib ...] [--resource Bundle ...]" >&2
   exit 2
 fi
 
